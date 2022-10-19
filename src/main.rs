@@ -136,20 +136,48 @@ async fn function_handler(event: LambdaEvent<LogsEvent>) -> Result<(), Error> {
         );
 
         let version = format!("{}/{}", a[2], a[3]);
-        let branch = "DEV";
+        let branch = match &a[1][14..] {
+            "dev" => "DEV",
+            "pre-prod" => "PP",
+            "pre-prod-2" => "PP2",
+            "prod" => "PROD",
+            "staging" => "STG",
+            "uat1" => "UAT1",
+            "uat2" => "UAT2",
+            "uat3" => "UAT3",
+            _ => "",
+        };
 
-        let v2 = create_jira_issue(basic.clone(), &a[1], &version, &branch).await?;
+        let url2 = match branch {
+            "" => "",
+            _ => {
+                let v = create_jira_issue(basic.clone(), &a[1], &version, &branch).await?;
 
-        let url2 = format!(
-            "{}/browse/{}",
-            std::env::var("JIRA_BASE_URL").unwrap(),
-            v2["key"].as_str().unwrap()
-        );
+                format!(
+                    "{}/browse/{}",
+                    std::env::var("JIRA_BASE_URL").unwrap(),
+                    v["key"].as_str().unwrap()
+                )
+            }
+        };
 
-        let rsp = client
+        let subject = match &a[1][14..] {
+            "base-image" => "New Base Image",
+            "dev" => "New Dev Image",
+            "pre-prod" => "New Pre-Prod Image",
+            "pre-prod-2" => "New Pre-Prod-2 Image",
+            "prod" => "New Prod Image",
+            "staging" => "New Staging Image",
+            "uat1" => "New UAT1 Image",
+            "uat2" => "New UAT2 Image",
+            "uat3" => "New UAT3 Image",
+            _ => "New AMI",
+        };
+
+        let response = client
             .publish()
             .topic_arn(std::env::var("TOPIC_ARN").unwrap())
-            .subject("New Ami created")
+            .subject(subject)
             .message(format!(
                 "Image builder pipeline: {}\nAmi id: {}\nBuild log: {}\nJira: {}",
                 arn,
@@ -160,7 +188,7 @@ async fn function_handler(event: LambdaEvent<LogsEvent>) -> Result<(), Error> {
             .send()
             .await?;
 
-        println!("{:?}", rsp);
+        println!("{:?}", response);
     }
 
     Ok(())
