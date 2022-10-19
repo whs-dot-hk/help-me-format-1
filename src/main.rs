@@ -137,29 +137,29 @@ async fn function_handler(event: LambdaEvent<LogsEvent>) -> Result<(), Error> {
 
         let version = format!("{}/{}", a[2], a[3]);
         let branch = match &a[1][14..] {
-            "dev" => "DEV",
-            "pre-prod" => "PP",
-            "pre-prod-2" => "PP2",
-            "prod" => "PROD",
-            "staging" => "STG",
-            "uat1" => "UAT1",
-            "uat2" => "UAT2",
-            "uat3" => "UAT3",
-            _ => "",
+            "dev" => Some("DEV"),
+            "pre-prod" => Some("PP"),
+            "pre-prod-2" => Some("PP2"),
+            "prod" => Some("PROD"),
+            "staging" => Some("STG"),
+            "uat1" => Some("UAT1"),
+            "uat2" => Some("UAT2"),
+            "uat3" => Some("UAT3"),
+            _ => None,
         };
 
-        let url2 = match branch {
-            "" => "",
-            _ => {
-                let v = create_jira_issue(basic.clone(), &a[1], &version, &branch).await?;
+        let mut url2: Option<String> = None;
+        if let Some(b) = branch {
+            let v = create_jira_issue(basic.clone(), &a[1], &version, &b).await?;
 
-                format!(
-                    "{}/browse/{}",
-                    std::env::var("JIRA_BASE_URL").unwrap(),
-                    v["key"].as_str().unwrap()
-                )
-            }
-        };
+            let s = format!(
+                "{}/browse/{}",
+                std::env::var("JIRA_BASE_URL").unwrap(),
+                v["key"].as_str().unwrap()
+            );
+
+            url2 = Some(s.to_owned());
+        }
 
         let subject = match &a[1][14..] {
             "base-image" => "New Base Image",
@@ -183,7 +183,7 @@ async fn function_handler(event: LambdaEvent<LogsEvent>) -> Result<(), Error> {
                 arn,
                 v["responseElements"]["imageId"].as_str().unwrap(),
                 url,
-                url2
+                url2.unwrap_or("".to_string())
             ))
             .send()
             .await?;
