@@ -154,12 +154,10 @@ async fn function_handler(event: LambdaEvent<LogsEvent>) -> Result<(), Error> {
             _ => None,
         };
 
-        let mut url2: Option<String> = None;
-        if let Some(b) = branch {
-            let s = create_jira_issue(basic.clone(), &a[1], &version, &b).await?;
-
-            url2 = Some(s);
-        }
+        let url2 = match branch {
+            Some(b) => create_jira_issue(basic.clone(), &a[1], &version, &b).await?,
+            _ => "".to_string(),
+        };
 
         let subject = match &a[1][14..] {
             "base-image" => "New Base Image",
@@ -183,7 +181,7 @@ async fn function_handler(event: LambdaEvent<LogsEvent>) -> Result<(), Error> {
                 arn,
                 v["responseElements"]["imageId"].as_str().unwrap(),
                 url,
-                url2.unwrap_or("".to_string())
+                url2
             ))
             .send()
             .await?;
