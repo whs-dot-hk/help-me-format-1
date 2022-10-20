@@ -14,7 +14,7 @@ async fn create_jira_issue(
     name: &str,
     version: &str,
     branch: &str,
-) -> Result<Value, Box<dyn std::error::Error + Send + Sync>> {
+) -> Result<String, Box<dyn std::error::Error + Send + Sync>> {
     let body = Body::from(
         json!({
           "fields": {
@@ -68,7 +68,13 @@ async fn create_jira_issue(
 
     let body_bytes = hyper::body::to_bytes(response.into_body()).await?;
 
-    Ok(serde_json::from_slice(&body_bytes).unwrap())
+    let v: Value = serde_json::from_slice(&body_bytes).unwrap();
+
+    Ok(format!(
+        "{}/browse/{}",
+        std::env::var("JIRA_BASE_URL").unwrap(),
+        v["key"].as_str().unwrap()
+    ))
 }
 
 /// This is the main body for the function.
@@ -150,13 +156,7 @@ async fn function_handler(event: LambdaEvent<LogsEvent>) -> Result<(), Error> {
 
         let mut url2: Option<String> = None;
         if let Some(b) = branch {
-            let v = create_jira_issue(basic.clone(), &a[1], &version, &b).await?;
-
-            let s = format!(
-                "{}/browse/{}",
-                std::env::var("JIRA_BASE_URL").unwrap(),
-                v["key"].as_str().unwrap()
-            );
+            let s = create_jira_issue(basic.clone(), &a[1], &version, &b).await?;
 
             url2 = Some(s.to_owned());
         }
