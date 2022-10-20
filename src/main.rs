@@ -158,7 +158,7 @@ async fn function_handler(event: LambdaEvent<LogsEvent>) -> Result<(), Error> {
         if let Some(b) = branch {
             let s = create_jira_issue(basic.clone(), &a[1], &version, &b).await?;
 
-            url2 = Some(s.to_owned());
+            url2 = Some(s);
         }
 
         let subject = match &a[1][14..] {
